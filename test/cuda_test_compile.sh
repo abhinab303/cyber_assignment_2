@@ -1,0 +1,1 @@
+nvcc cuda_test.cu -o hello
