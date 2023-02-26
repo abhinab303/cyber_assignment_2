@@ -33,7 +33,7 @@ __global__ void squared_l2_dist_cuda(int* x,int* y, int* sum2, int D) {
 	// printf("%d--", tid);
 
 	if (tid < D){
-		atomicAdd(*sum2, (x[tid] - y[tid]) * (x[tid] - y[tid]));
+		atomicAdd(sum2, (x[tid] - y[tid]) * (x[tid] - y[tid]));
 		// *sum2 += (x[tid] - y[tid]) * (x[tid] - y[tid]);
 	}
 }
