@@ -18,7 +18,7 @@ int* edges;
 // 	return sum2;
 // }
 
-__global__ void squared_l2_dist(int* x,int* y, int &sum2, int D) {
+__global__ void squared_l2_dist(int* x,int* y, int* sum2, int D) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     
     // Handling arbitrary vector size
