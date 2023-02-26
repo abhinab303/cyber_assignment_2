@@ -11,14 +11,14 @@ int V,D,E,L,K,A,B,C,M,Q;
 int* X;
 int* edges;
 
-// int squared_l2_dist(int* x,int* y,int D){
-// 	int sum2 = 0;
-// 	for(int i = 0;i < D;++i)
-// 		sum2 += (x[i] - y[i]) * (x[i] - y[i]);
-// 	return sum2;
-// }
+int squared_l2_dist(int* x,int* y,int D){
+	int sum2 = 0;
+	for(int i = 0;i < D;++i)
+		sum2 += (x[i] - y[i]) * (x[i] - y[i]);
+	return sum2;
+}
 
-__global__ void squared_l2_dist(int* x,int* y, int* sum2, int D) {
+__global__ void squared_l2_dist_cuda(int* x,int* y, int* sum2, int D) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     
     // Handling arbitrary vector size
@@ -68,11 +68,11 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 		// Executing kernel 
 		int block_size = 256;
 		int grid_size = ((D + block_size) / block_size);
-		squared_l2_dist<<<grid_size,block_size>>>(d_X,d_query_data,d_d,D);
+		squared_l2_dist_cuda<<<grid_size,block_size>>>(d_X,d_query_data,d_d,D);
 
 		cudaMemcpy(&d, d_d, sizeof(int), cudaMemcpyDeviceToHost);
 
-		printf("%d", d);
+		printf("%d %d\n", d, squared_l2_dist(X + id * D,query_data,D));
 
 		cudaFree(d_query_data);
 		cudaFree(d_X);
