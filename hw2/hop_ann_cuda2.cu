@@ -5,6 +5,8 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include<omp.h>
+#include<vector>
+using namespace std;
 
 #define BLOCK_SIZE 256
 #define N_THREADS 8
@@ -83,24 +85,70 @@ __global__ void squared_l2_dist_reduce_simple_combined(int* x, int* y, int* g_od
 }
 
 
+__global__ void reduce_array(int* g_idata, int* g_odata) {
+
+	extern __shared__ int sdata[];
+	// each thread loads one element from global to shared mem
+	// perform first level of reduction,
+	// reading from global memory, writing to shared memory
+	unsigned int tid = threadIdx.x;
+	unsigned int i = blockIdx.x*(blockDim.x*2) + threadIdx.x;
+	sdata[tid] = g_idata[i] + g_idata[i+blockDim.x];
+	__syncthreads();
+	// do reduction in shared mem
+	for (unsigned int s=blockDim.x/2; s>0; s>>=1) {
+		if (tid < s) {
+			sdata[tid] += sdata[tid + s];
+		}
+		__syncthreads();
+	}
+	// write result for this block to global mem
+	// if (tid == 0) g_odata[blockIdx.x] = sdata[0];
+	if (tid == 0)
+        atomicAdd(g_odata, sdata[0]);
+
+}
+
+__global__ void get_array_to_sum(int* x, int* y, int* sum2, int D) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    // Handling arbitrary vector size
+    if (tid < D){
+        sum2[tid] = (x[tid] - y[tid]) * (x[tid] - y[tid]);
+    }
+}
+
+
+__global__ void get_each_distance(vector<int> d, int* y, vector<int> dist_list) {
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	
+	int block_size = BLOCK_SIZE;
+	int grid_size = ((D + block_size) / block_size);
+	int *d_sum_list, *d_d;
+
+	cudaMalloc((void**)&d_sum_list, sizeof(int) * D);
+	cudaMalloc(&d_d, sizeof(int));
+
+	get_array_to_sum<<<grid_size,block_size>>>(X + d[tid] * D, y, d_sum_list, D);
+	reduce_array<<<grid_size,block_size>>>(d_sum_list, d_d);
+
+	if (tid < d.size()){
+		dist_list[tid] = *d_d;
+	}
+
+}
+
+
 int nearest_id(int start_point,int max_hop,int* query_data){
 	std::queue<std::pair<int,int>> q;
 	q.push(std::make_pair(start_point,0));
 	int min_d = std::numeric_limits<int>::max();
 	int min_id = -1;
 
-	int *d_query_data, *d_X, *d_d, *d_sum_list; 
-	// int *sum_list;
+	vector<int> dist_id;
+	vector<int> dist_list;
+	int count = 0;
 
-	cudaMalloc((void**)&d_query_data, sizeof(int) * D);
-
-	cudaMalloc((void**)&d_X, sizeof(int) * D);
-	cudaMalloc((void**)&d_sum_list, sizeof(int) * D);
-	cudaMalloc(&d_d, sizeof(int));
-
-	cudaMemcpy(d_query_data, query_data, sizeof(int) * D, cudaMemcpyHostToDevice);
-
-	// #pragma omp parallel num_threads(N_THREADS)
 	while(!q.empty()){
 		auto now = q.front();
 		q.pop();
@@ -108,45 +156,13 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 		int hop = now.second;
 		int d = 0;
 		
+		dist_id.push_back(id);
 		// d = squared_l2_dist(X + id * D,query_data,D);
 
-		// cudaMalloc((void**)&d_X, sizeof(int) * D);
-		// cudaMalloc((void**)&d_sum_list, sizeof(int) * D);
-		// cudaMalloc(&d_d, sizeof(int));
-		
-		// Transfer data from host to device memory
-		cudaMemcpy(d_X, X + id * D, sizeof(int) * D, cudaMemcpyHostToDevice);
-		cudaMemcpy(d_d, &d, sizeof(int), cudaMemcpyHostToDevice);
-		
-		// Executing kernel 
-		int block_size = BLOCK_SIZE;
-		// int blockSize = 256;
-		int grid_size = ((D + block_size) / block_size);
-
-		// squared_l2_dist_list<<<grid_size,block_size>>>(d_X,d_query_data,d_sum_list,D);
-		// squared_l2_dist_reduce_simple<<<grid_size,block_size>>>(d_sum_list, d_d, D);
-		squared_l2_dist_reduce_simple_combined<<<grid_size,block_size>>>(d_X,d_query_data, d_d);
-
-		cudaMemcpy(&d, d_d, sizeof(int), cudaMemcpyDeviceToHost);
-
-		// squared_l2_dist_reduce<<<grid_size,block_size>>>(d_sum_list, d_d, D);
-		// squared_l2_dist_reduce<BLOCK_SIZE><<<grid_size,block_size>>>(d_sum_list, d_d, D);
-
-		// printf("%d %d\n", d, squared_l2_dist(X + id * D,query_data,D));
-		// printf("%d %d\n", block_size, grid_size);
-
-
-		// cudaFree(d_query_data);
-		// cudaFree(d_X);
-		// cudaFree(d_d);
-		// cudaFree(d_sum_list);
-
-		// int d = squared_l2_dist(X + id * D,query_data,D);
-
-		if((d < min_d) || (d == min_d && id < min_id)){
-			min_d = d;
-			min_id = id;
-		}
+		// if((d < min_d) || (d == min_d && id < min_id)){
+		// 	min_d = d;
+		// 	min_id = id;
+		// }
 		if(hop + 1 <= max_hop){
 			int degree = edges[id * (L + 1)];
 			for(int i = 1;i <= degree;++i){
@@ -154,12 +170,17 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 				q.push(std::make_pair(v,hop + 1));
 			}
 		}
+
+		count++;
+
 	}
 
-	// cudaFree(d_query_data);
-	cudaFree(d_X);
-	cudaFree(d_d);
-	cudaFree(d_sum_list);
+	// printf("%d ", dist_id.size());
+
+
+	get_each_distance<<<1,2>>>(dist_id, query_data, dist_list);
+
+
 
 	return min_id;
 }
