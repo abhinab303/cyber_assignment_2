@@ -42,7 +42,7 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 	int min_d = std::numeric_limits<int>::max();
 	int min_id = -1;
 
-	int *d_query_data, *d_X, d_d; 
+	int *d_query_data, *d_X, *d_d; 
 
 	while(!q.empty()){
 		auto now = q.front();
