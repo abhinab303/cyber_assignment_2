@@ -72,7 +72,7 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 
 		cudaMemcpy(&d, d_d, sizeof(long), cudaMemcpyDeviceToHost);
 
-		printf(d)
+		printf(d);
 
 		cudaFree(d_query_data);
 		cudaFree(d_X);
