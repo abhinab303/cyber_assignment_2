@@ -62,7 +62,7 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 		// Transfer data from host to device memory
 		cudaMemcpy(d_query_data, query_data, sizeof(int) * D, cudaMemcpyHostToDevice);
 		cudaMemcpy(d_X, X + id * D, sizeof(int) * (V * D), cudaMemcpyHostToDevice);
-		cudaMemcpy(d_d, d, sizeof(int), cudaMemcpyHostToDevice);
+		cudaMemcpy(d_d, &d, sizeof(int), cudaMemcpyHostToDevice);
 
 
 		// Executing kernel 
