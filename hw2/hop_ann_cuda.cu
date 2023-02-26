@@ -72,7 +72,8 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 
 		cudaMemcpy(&d, d_d, sizeof(int), cudaMemcpyDeviceToHost);
 
-		printf("%d %d\n", d, squared_l2_dist(X + id * D,query_data,D));
+		// printf("%d %d\n", d, squared_l2_dist(X + id * D,query_data,D));
+		print("%d %d", block_size, grid_size)
 
 		cudaFree(d_query_data);
 		cudaFree(d_X);
