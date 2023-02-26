@@ -31,7 +31,7 @@ __global__ void squared_l2_dist(int* x,int* y, int* sum2, int D) {
 	// return sum2;
 
 	if (tid < D){
-		sum2 += (x[tid] - y[tid]) * (x[tid] - y[tid]);
+		*sum2 += (x[tid] - y[tid]) * (x[tid] - y[tid]);
 	}
 }
 
@@ -70,7 +70,7 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 		int grid_size = ((D + block_size) / block_size);
 		squared_l2_dist<<<grid_size,block_size>>>(d_X,d_query_data,d_d,D);
 
-		cudaMemcpy(&d, d_d, sizeof(long), cudaMemcpyDeviceToHost);
+		cudaMemcpy(&d, d_d, sizeof(int), cudaMemcpyDeviceToHost);
 
 		printf("%d", d);
 
