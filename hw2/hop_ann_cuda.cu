@@ -30,7 +30,7 @@ __global__ void squared_l2_dist(int* x,int* y, int &sum2, int D) {
 	// 	sum2 += (x[i] - y[i]) * (x[i] - y[i]);
 	// return sum2;
 
-	if (tid < n){
+	if (tid < D){
 		sum2 += (x[tid] - y[tid]) * (x[tid] - y[tid]);
 	}
 }
@@ -41,6 +41,9 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 	q.push(std::make_pair(start_point,0));
 	int min_d = std::numeric_limits<int>::max();
 	int min_id = -1;
+
+	int *d_query_data, *d_X, d_d; 
+
 	while(!q.empty()){
 		auto now = q.front();
 		q.pop();
@@ -53,12 +56,12 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 		// Allocate device memory 
 		cudaMalloc((void**)&d_query_data, sizeof(int) * D);
 		cudaMalloc((void**)&d_X, sizeof(int) * (V * D));
-		cudaMalloc((int)&d_d, sizeof(int));
+		cudaMalloc(&d_d, sizeof(int));
 
 
 		// Transfer data from host to device memory
-		cudaMemcpy(d_query_data, query_data, sizeof(float) * D, cudaMemcpyHostToDevice);
-		cudaMemcpy(d_X, X + id * D, sizeof(float) * (V * D), cudaMemcpyHostToDevice);
+		cudaMemcpy(d_query_data, query_data, sizeof(int) * D, cudaMemcpyHostToDevice);
+		cudaMemcpy(d_X, X + id * D, sizeof(int) * (V * D), cudaMemcpyHostToDevice);
 		cudaMemcpy(d_d, d, sizeof(int), cudaMemcpyHostToDevice);
 
 
