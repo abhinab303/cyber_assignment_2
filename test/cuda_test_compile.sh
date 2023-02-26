@@ -1,1 +1,1 @@
-nvcc cuda_test.cu -o hello
+nvcc vector_add_grid.cu -o hello

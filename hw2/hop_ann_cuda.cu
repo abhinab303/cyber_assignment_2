@@ -66,14 +66,14 @@ int nearest_id(int start_point,int max_hop,int* query_data){
 
 
 		// Executing kernel 
-		int block_size = 256;
+		int block_size = 1;
 		int grid_size = ((D + block_size) / block_size);
 		squared_l2_dist_cuda<<<grid_size,block_size>>>(d_X,d_query_data,d_d,D);
 
 		cudaMemcpy(&d, d_d, sizeof(int), cudaMemcpyDeviceToHost);
 
 		// printf("%d %d\n", d, squared_l2_dist(X + id * D,query_data,D));
-		printf("%d %d", block_size, grid_size);
+		printf("%d %d\n", block_size, grid_size);
 
 		cudaFree(d_query_data);
 		cudaFree(d_X);
